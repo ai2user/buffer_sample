@@ -20,12 +20,9 @@ public class CommonBufferQueue<TKey, TPayload>
         if (NeedHandle(currentBuffer, options))
         {
             _commonBuffer = new Buffer<TKey, TPayload>();
-            _lock.ExitWriteLock();
         }
-        else
-        {
-            _lock.ExitWriteLock();
-        }
+
+        _lock.ExitWriteLock();
 
         if (addToQueue)
         {
@@ -44,6 +41,7 @@ public class CommonBufferQueue<TKey, TPayload>
                 _commonBuffer.IsCompleted = true;
                 _commonBuffer = new Buffer<TKey, TPayload>();
             }
+            _lock.ExitWriteLock();
         }
 
         return dequeuedBuffer;
