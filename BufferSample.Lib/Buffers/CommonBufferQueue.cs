@@ -8,11 +8,11 @@ public class CommonBufferQueue<TKey, TPayload>
         Channel.CreateUnbounded<Buffer<TKey, TPayload>>(new UnboundedChannelOptions() { SingleReader = true });
 
     private volatile Buffer<TKey, TPayload> _commonBuffer = new();
-    private readonly ReaderWriterLockSlim _lock = new();
+    private readonly Lock _lock = new();
 
     public async ValueTask EnqueueAsync(TKey key, TPayload item, BufferOptions options)
     {
-        _lock.EnterWriteLock();
+        _lock.Enter();
         var currentBuffer = _commonBuffer;
         currentBuffer.AddItem(item);
         var addToQueue = NeedAddToQueue(currentBuffer);
@@ -20,12 +20,9 @@ public class CommonBufferQueue<TKey, TPayload>
         if (NeedHandle(currentBuffer, options))
         {
             _commonBuffer = new Buffer<TKey, TPayload>();
-            _lock.ExitWriteLock();
         }
-        else
-        {
-            _lock.ExitWriteLock();
-        }
+
+        _lock.Exit();
 
         if (addToQueue)
         {
@@ -38,12 +35,14 @@ public class CommonBufferQueue<TKey, TPayload>
         var dequeuedBuffer = await _buffersQueue.Reader.ReadAsync();
         if (dequeuedBuffer == _commonBuffer)
         {
-            _lock.EnterWriteLock();
+            _lock.Enter();
             if (dequeuedBuffer == _commonBuffer)
             {
                 _commonBuffer.IsCompleted = true;
                 _commonBuffer = new Buffer<TKey, TPayload>();
             }
+
+            _lock.Exit();
         }
 
         return dequeuedBuffer;

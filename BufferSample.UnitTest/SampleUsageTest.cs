@@ -29,10 +29,8 @@ public class Test
 
         _ = new[] { worker.ProcessMultiplyKey(), worker.ProcessSingleKeys() };
         var requests = Enumerable.Range(1, Count).Select(_ => new BufferPayload(1)).ToArray();
-        foreach (var request in requests)
-        {
-            await singleKeyBuffer.EnqueueAsync(1, request, bufferOptions);
-        }
+        await Parallel.ForEachAsync(requests,
+            async (request, _) => { await singleKeyBuffer.EnqueueAsync(1, request, bufferOptions); });
 
         await Task.WhenAll(requests.Select(q => q.TaskCompletionSource.Task));
     }
@@ -52,10 +50,8 @@ public class Test
 
         _ = new[] { worker.ProcessMultiplyKey(), worker.ProcessSingleKeys() };
         var requests = Enumerable.Range(1, Count).Select(_ => new BufferPayload(1)).ToArray();
-        foreach (var request in requests)
-        {
-            await multiplyKeysBuffer.EnqueueAsync(1, request, bufferOptions);
-        }
+        await Parallel.ForEachAsync(requests,
+            async (request, _) => { await multiplyKeysBuffer.EnqueueAsync(1, request, bufferOptions); });
 
         await Task.WhenAll(requests.Select(q => q.TaskCompletionSource.Task));
     }
@@ -70,13 +66,13 @@ public class Test
         var storage = new StorageMock();
         var queueHandler = new BufferHandler(storage, TimeSpan.FromMilliseconds(10), _testOutputHelper);
         var requests = Enumerable.Range(1, Count).Select(_ => new BufferPayload(1)).ToArray();
-        foreach (var request in requests)
+        await Parallel.ForEachAsync(requests, async (request, _) =>
         {
-            var bufer = new Buffer<long, BufferPayload>(1);
-            bufer.AddItem(request);
+            var buffer = new Buffer<long, BufferPayload>(1);
+            buffer.AddItem(request);
             //no await
-            _ = queueHandler.HandleAsync(bufer);
-        }
+            await queueHandler.HandleAsync(buffer);
+        });
 
         await Task.WhenAll(requests.Select(q => q.TaskCompletionSource.Task));
     }
